@@ -15,7 +15,7 @@ _Some_ additional standards include:
 See [telnet_spec.js](lib/telnet_spec.js) for more information and additional standards.
 
 ## Usage
-```
+```javascript
 const { TelnetSocket, TelnetSpec } = require('telnet-socket');
 
 const telnetSocket = TelnetSocket(rawSocket);
