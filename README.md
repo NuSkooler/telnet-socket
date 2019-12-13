@@ -24,7 +24,7 @@ telnetSocket.do.ttype();
 
 telnetSocket.on('WILL', command => {
     switch (command.option) {
-        case TelnetSpec.Option.TTYPE :
+        case TelnetSpec.Options.TTYPE :
             telnetSocket.sb.send.ttype();
             break;
     }
