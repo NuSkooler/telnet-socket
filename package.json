@@ -1,6 +1,6 @@
 {
   "name": "telnet-socket",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "A standards compliant Telnet implementation for Node.js",
   "main": "index.js",
   "scripts": {
@@ -8,16 +8,24 @@
   },
   "keywords": [
     "telnet",
-    "rfc854"
+    "rfc854",
+    "rfc856",
+    "rfc857",
+    "rfc858",
+    "rfc1073",
+    "rfc1091",
+    "rfc1572",
+    "bbs",
+    "ansi-bbs"
   ],
   "author": "Bryan D. Ashby <bryan@l33t.codes>",
   "license": "BSD-2-Clause",
   "dependencies": {
-    "binary-parser": "^1.5.0",
+    "binary-parser": "1.6.2",
     "buffers": "github:NuSkooler/node-buffers"
   },
   "repository": {
-    "type" : "git",
-    "url" : "https://github.com/NuSkooler/telnet-socket.git"
+    "type": "git",
+    "url": "https://github.com/NuSkooler/telnet-socket.git"
   }
 }
