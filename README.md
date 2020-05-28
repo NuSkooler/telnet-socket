@@ -31,6 +31,13 @@ telnetSocket.on('WILL', command => {
 });
 ```
 
+## The TelnetSocket Class
+
+### Properties
+* `passthrough`: Set to `true` to enable passthrough mode. Defaults to `false`.
+* `escapeIACs`: Set to `false` to disable escaping of telnet `IAC` characters. Defaults to `true`.
+* `rawSocket`: Access the underlying socket.
+
 ### Events
 #### General
 * `data` `(data)`: Non-protocol data
@@ -44,6 +51,7 @@ Events are emitted for specific Telnet commands such as (but not limited to) `DO
 * `name`: The command name (`DO`, `DONT`, ...) or `unknown comand`.
 * `option`: Option sent with the command.
 * `optionName`: The name of the option such as `NAWS` or `unknown option`.
+* `optionData`: For options that contain additional data. For example, `NAWS` contains `height` and `width` members, while `TTYPE` contains a `ttype` member.
 
 Unknown commands are emitted as `unknown command` with the same signature described above.
 
