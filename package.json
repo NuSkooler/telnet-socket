@@ -1,6 +1,6 @@
 {
   "name": "telnet-socket",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "A standards compliant Telnet implementation for Node.js",
   "main": "index.js",
   "scripts": {
