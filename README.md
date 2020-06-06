@@ -20,13 +20,14 @@ const { TelnetSocket, TelnetSpec } = require('telnet-socket');
 
 const telnetSocket = TelnetSocket(rawSocket);
 
-telnetSocket.do.ttype();
+//	request client to send NAWS
+telnetSocket.do.naws();
 
-telnetSocket.on('WILL', command => {
-    switch (command.option) {
-        case TelnetSpec.Options.TTYPE :
-            telnetSocket.sb.send.ttype();
-            break;
+telnetSocket.on('SB', command => {
+	if (TelnetSpec.Options.NAWS === command.option) {
+		// client sent us NAWS
+		const { width, height } = command.optionData;
+		// ...do something with height and width
     }
 });
 ```
