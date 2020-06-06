@@ -28,7 +28,7 @@ telnetSocket.on('SB', command => {
 		// client sent us NAWS
 		const { width, height } = command.optionData;
 		// ...do something with height and width
-    }
+	}
 });
 ```
 
