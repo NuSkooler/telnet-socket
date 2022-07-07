@@ -2,7 +2,7 @@
 A standards compliant Telnet implementation for Node.js
 
 ## Standards
-In addition to [RFC 854](https://tools.ietf.org/html/rfc854), a number of additional RFCs, proposed RFCs, and adopted options such as [GMCP](https://www.gammon.com.au/gmcp) are implemented. An emphasis on standards used with ANSI-BBS related terminals is taken, though PRs are certainly welcome if something of use is missing.
+In addition to [RFC 854](https://tools.ietf.org/html/rfc854), a number of additional RFCs, proposed RFCs, and adopted options such as [GMCP](https://www.gammon.com.au/gmcp) and [MSSP](https://mudhalla.net/tintin/protocols/mssp/) are implemented. An emphasis on standards used with ANSI-BBS related terminals is taken, though PRs are certainly welcome if something of use is missing.
 
 _Some_ additional standards include:
 * [RFC 856 - Telnet Binary Transmission](https://tools.ietf.org/html/rfc856)
