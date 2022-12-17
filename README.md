@@ -56,5 +56,9 @@ Events are emitted for specific Telnet commands such as (but not limited to) `DO
 
 Unknown commands are emitted as `unknown command` with the same signature described above.
 
+## FAQ
+* Q: How do I receive characters instead of lines?
+* A: Issue `socket.will.sga()`
+
 ## License
 See [LICENSE.md](LICENSE)
