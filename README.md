@@ -32,6 +32,8 @@ telnetSocket.on('SB', command => {
 });
 ```
 
+> :information_source: You can see example usage in [ENiGMA 1/2 BBS here](https://github.com/NuSkooler/enigma-bbs/blob/master/core/servers/login/telnet.js)
+
 ## The TelnetSocket Class
 
 ### Properties
