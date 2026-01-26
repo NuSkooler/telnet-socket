@@ -21,7 +21,7 @@
   "author": "Bryan D. Ashby <bryan@l33t.codes>",
   "license": "BSD-2-Clause",
   "dependencies": {
-    "binary-parser": "1.6.2",
+    "binary-parser": "2.3.0",
     "buffers": "github:NuSkooler/node-buffers"
   },
   "repository": {
