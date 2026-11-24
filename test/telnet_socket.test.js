@@ -792,3 +792,38 @@ describe('an unterminated subnegotiation sent a byte at a time', () => {
         test(`${what}, filled with 'A'`, () => flood(header, 0x41));
     });
 });
+
+describe('an escaped 0xFF before 0xF0 inside a subnegotiation is not its end', () => {
+    //  IAC IAC SE in a payload is the byte 0xFF then the byte 0xF0 (RFC 854);
+    //  fed whole and a byte at a time, which also exercises the resumed scan
+    test('an unknown option: one SB with all of it in raw', async () => {
+        const sub = [IAC, SB, MSSP, 1, IAC, IAC, SE, 2, IAC, SE];
+        await sameSplit([...sub, 0x41], [sb(MSSP, 'MSSP', { raw: sub })], [0x41]);
+    });
+
+    test('TTYPE IS: consumed whole, a command error (a value cannot hold 0xFF)', async () => {
+        await sameSplit(
+            [IAC, SB, TTYPE, IS, 0x41, IAC, IAC, SE, 0x42, IAC, SE, 0x43],
+            [sbError(TTYPE, 'TTYPE', 'Invalid TTYPE option structure')],
+            [0x43]
+        );
+    });
+
+    test('NEW-ENVIRON: consumed whole, a command error', async () => {
+        await sameSplit(
+            [IAC, SB, NEW_ENVIRON, IS, VAR, 0x41, VALUE, IAC, IAC, SE, IAC, SE, 0x43],
+            [sbError(NEW_ENVIRON, 'NEW_ENVIRON', 'Invalid NEW-ENVIRON structure')],
+            [0x43]
+        );
+    });
+
+    test('an unknown option split at every position', async () => {
+        const sub = [IAC, SB, MSSP, 1, IAC, IAC, SE, IAC, IAC, IAC, IAC, SE, 2, IAC, SE];
+        const stream = [...sub, 0x41];
+        for (let at = 1; at < stream.length; at++) {
+            const run = feedChunks([stream.slice(0, at), stream.slice(at)]);
+            assert.deepEqual(run.events, [sb(MSSP, 'MSSP', { raw: sub })], `split at ${at}`);
+            assert.deepEqual(await run.output(), [0x41], `split at ${at}`);
+        }
+    });
+});
