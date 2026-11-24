@@ -1,5 +1,30 @@
 # Changelog
 
+## [0.2.7] - Unreleased
+
+### Bug Fixes
+- A subnegotiation that fails to parse (NAWS, TTYPE, NEW-ENVIRON) is now
+  emitted as `'command error'` with the parse error. It used to be emitted
+  as `'SB'` with the `Error` as its `optionData`, because the error was
+  never attached where `'command error'` looks for it.
+- **RFC 1073:** Read NetRunner's NAWS, whose 4-byte payload is padded with a
+  NUL on each side (`IAC SB NAWS 00 WW WW HH HH 00 IAC SE`). Any other
+  payload length is still rejected.
+- **RFC 1073:** A NAWS payload shorter than 4 bytes no longer holds back
+  the input after it until 9 bytes have arrived; it is a `'command error'`
+  as soon as its `IAC SE` arrives.
+- **RFC 1073:** The end of a NAWS is found past escaped 0xFF bytes, so a
+  dimension with a 0xFF byte followed by 0xF0 is no longer cut short.
+
+### Changed
+- A consumer listening only to `'SB'` no longer sees malformed
+  subnegotiations at all; listen to `'command error'` for them.
+
+### Tests
+- Add `npm test` (`node --test`) with NAWS tests: the 4-byte and padded
+  payloads, an escaped 255, a NAWS sent without `WILL NAWS`, rejected
+  lengths, a short payload, and a NAWS split across chunks.
+
 ## [0.2.6] - 2026-05-08
 
 ### Security
