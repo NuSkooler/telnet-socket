@@ -93,3 +93,34 @@ test('a command error leaves the data after it alone', async () => {
     );
     assert.equal(await text(), 'AB');
 });
+
+test('NAWS: a payload under 4 bytes does not hold back the input after it', async () => {
+    const { events, text } = feed([...naws([0x00, 0x50]), 0x41]);
+    assert.deepEqual(
+        events.map(e => e.name),
+        ['command error']
+    );
+    assert.equal(await text(), 'A');
+});
+
+test('NAWS: an escaped 255 followed by 240 (SE) is not the end', async () => {
+    //  width 0xFFF0: FF is escaped, F0 is the low byte
+    const { events, text } = feed([...naws([IAC, IAC, SE, 0x00, 0x19]), 0x41]);
+    assert.deepEqual(
+        events.map(e => e.name),
+        ['SB']
+    );
+    assert.deepEqual(events[0].command.optionData, { width: 0xfff0, height: 25 });
+    assert.equal(await text(), 'A');
+});
+
+test('NAWS: split across chunks', () => {
+    const socket = new EventEmitter();
+    socket.write = () => true;
+    const telnet = new TelnetSocket(socket);
+    const got = [];
+    telnet.on('SB', command => got.push(command.optionData));
+    const bytes = naws([0x00, 0x50, 0x00, 0x19]);
+    bytes.forEach(b => socket.emit('data', Buffer.from([b])));
+    assert.deepEqual(got, [{ width: 80, height: 25 }]);
+});
