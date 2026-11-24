@@ -160,3 +160,14 @@ test('NAWS: an unterminated payload sent a byte at a time is cheap until the ove
     //  it was about 2.6s with a JavaScript scan from the start on every byte
     assert(elapsed < 1500, `took ${elapsed}ms`);
 });
+
+test('NAWS: a long malformed payload with an escaped 255 before 240 is consumed whole', async () => {
+    //  FF FF F0 inside it is an escaped 0xFF and a 0xF0, not its end
+    const payload = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, IAC, IAC, SE, 0x61, 0x62, 0x63];
+    const { events, text } = feed([...naws(payload), 0x41]);
+    assert.deepEqual(
+        events.map(e => e.name),
+        ['command error']
+    );
+    assert.equal(await text(), 'A');
+});

@@ -22,9 +22,15 @@
   it a byte at a time). And when `IAC SE` had not arrived yet, only
   `IAC SB OPTION` was taken: the rest of the payload was passed on as data
   and its `IAC SE` emitted as an `'SE'` command.
-- **RFC 1073:** The NAWS end search is bounded to where a NAWS can end. An
-  unterminated NAWS sent a byte at a time used to cost a scan from its
-  start on every byte (about 2.6 s of CPU for 64 KB).
+- **RFC 854:** The end of every subnegotiation (NAWS, TTYPE, NEW-ENVIRON
+  and unknown options) is found past escaped 0xFF bytes, and a search
+  resumes where the last one stopped. A subnegotiation that never ends,
+  sent a byte at a time, used to be searched from its start on every byte:
+  seconds of CPU for 64 KB (worst when filled with 0xFF), now a few
+  milliseconds before the 64 KB guard resets the stream.
+- **RFC 1091:** An empty TTYPE IS (`IAC SB TTYPE IS IAC SE`) is an empty
+  `ttype` at once. It used to wait for a seventh byte and then search past
+  its own `IAC SE`, taking everything up to the next `IAC SE` into it.
 
 ### Changed
 - A consumer listening only to `'SB'` no longer sees malformed

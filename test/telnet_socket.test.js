@@ -25,6 +25,7 @@ const SE = 240;
 
 const ECHO = 1;
 const TTYPE = 24;
+const NAWS = 31;
 const NEW_ENVIRON = 39;
 const MSSP = 70;
 
@@ -293,17 +294,23 @@ describe('TTYPE', () => {
         assert.deepEqual(await run.output(), [0x44]);
     });
 
-    test('quirk: an empty IS waits for a later IAC SE and takes it all', async () => {
-        //  IAC SB TTYPE IS IAC SE is 6 bytes and the IS path needs 7; the
-        //  search for IAC SE starts past the first one, so everything up to
-        //  the next IAC SE is consumed and the value reads as empty
+    test('an empty IS is an empty value, and what follows it is not swallowed', async () => {
+        //  it used to wait for a 7th byte and then search past the first
+        //  IAC SE, taking everything up to the next one into the TTYPE
         const run = feedChunks([[IAC, SB, TTYPE, IS, IAC, SE], [0x41, 0x42, IAC, SE, 0x43]]);
-        assert.deepEqual(run.events, [sb(TTYPE, 'TTYPE', { ttype: '' })]);
-        assert.deepEqual(await run.output(), [0x43]);
+        assert.deepEqual(run.events, [
+            sb(TTYPE, 'TTYPE', { ttype: '' }),
+            { name: 'SE', command: { code: SE, option: undefined, name: 'SE', optionName: 'unknown option' } },
+        ]);
+        assert.deepEqual(await run.output(), [0x41, 0x42, 0x43]);
     });
 
-    test('quirk: an empty IS followed by IAC SE in one chunk is an empty value', async () => {
-        await sameSplit([IAC, SB, TTYPE, IS, IAC, SE, IAC, SE], [sb(TTYPE, 'TTYPE', { ttype: '' })], []);
+    test('an empty IS followed by IAC SE in one chunk: the empty value, then an SE', async () => {
+        await sameSplit(
+            [IAC, SB, TTYPE, IS, IAC, SE, IAC, SE],
+            [sb(TTYPE, 'TTYPE', { ttype: '' }), { name: 'SE', command: { code: SE, option: undefined, name: 'SE', optionName: 'unknown option' } }],
+            []
+        );
     });
 
     test('SEND', async () => {
@@ -751,5 +758,37 @@ describe('the wrapped socket', () => {
         const telnet = new TelnetSocket(socket);
         await new Promise(resolve => telnet.end(resolve));
         assert(ended);
+    });
+});
+
+describe('an unterminated subnegotiation sent a byte at a time', () => {
+    //  each byte is scanned once: a scan from the start on every byte made
+    //  a 64 KB flood (worst with 0xFF bytes) cost seconds of CPU
+    const flood = (header, fill) => {
+        const socket = makeSocket();
+        const telnet = new TelnetSocket(socket);
+        const errors = [];
+        telnet.on('error', err => errors.push(err));
+        telnet.on('data', () => {});
+        const started = Date.now();
+        socket.emit('data', Buffer.from(header));
+        const one = Buffer.from([fill]);
+        for (let i = 0; i < 70000 && 0 === errors.length; i++) {
+            socket.emit('data', one);
+        }
+        const elapsed = Date.now() - started;
+        assert.equal(errors.length, 1);
+        assert.match(errors[0].message, /overflow/);
+        assert(elapsed < 1500, `took ${elapsed}ms`);
+    };
+
+    [
+        ['NAWS', [IAC, SB, NAWS]],
+        ['TTYPE IS', [IAC, SB, TTYPE, IS]],
+        ['NEW-ENVIRON IS', [IAC, SB, NEW_ENVIRON, IS]],
+        ['an unknown option', [IAC, SB, MSSP]],
+    ].forEach(([what, header]) => {
+        test(`${what}, filled with 0xFF`, () => flood(header, IAC));
+        test(`${what}, filled with 'A'`, () => flood(header, 0x41));
     });
 });
