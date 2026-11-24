@@ -15,15 +15,45 @@
   as soon as its `IAC SE` arrives.
 - **RFC 1073:** The end of a NAWS is found past escaped 0xFF bytes, so a
   dimension with a 0xFF byte followed by 0xF0 is no longer cut short.
+- An unknown option's subnegotiation (one with no parser, e.g. MSSP or
+  LINEMODE) now waits for its `IAC SE`, as the others do. It used to throw
+  an `oob` error out of the socket's `'data'` event when `IAC SB OPTION`
+  were the last 3 bytes buffered (any client could do this, e.g. by sending
+  it a byte at a time). And when `IAC SE` had not arrived yet, only
+  `IAC SB OPTION` was taken: the rest of the payload was passed on as data
+  and its `IAC SE` emitted as an `'SE'` command.
+- **RFC 854:** The end of every subnegotiation (NAWS, TTYPE, NEW-ENVIRON
+  and unknown options) is found past escaped 0xFF bytes, and a search
+  resumes where the last one stopped. A subnegotiation that never ends,
+  sent a byte at a time, used to be searched from its start on every byte:
+  seconds of CPU for 64 KB (worst when filled with 0xFF), now a few
+  milliseconds before the 64 KB guard resets the stream.
+- **RFC 1091:** An empty TTYPE IS (`IAC SB TTYPE IS IAC SE`) is an empty
+  `ttype` at once. It used to wait for a seventh byte and then search past
+  its own `IAC SE`, taking everything up to the next `IAC SE` into it.
 
 ### Changed
 - A consumer listening only to `'SB'` no longer sees malformed
   subnegotiations at all; listen to `'command error'` for them.
 
+### Dependencies
+- No runtime dependencies. `binary-parser` (whose 3.x is ESM-only) and
+  the git dependency `buffers` (`github:NuSkooler/node-buffers`) are
+  removed, so installing no longer needs git. TTYPE IS and NEW-ENVIRON are
+  parsed by hand and the stream is buffered by an internal byte queue,
+  with no behaviour change: the same events, objects and errors for the
+  same input. `optionData.raw` on an SB for an option without a parser
+  keeps its shape: `length`, `get(i)`, `toBuffer()`, `slice()` and
+  `toString()`.
+
 ### Tests
 - Add `npm test` (`node --test`) with NAWS tests: the 4-byte and padded
   payloads, an escaped 255, a NAWS sent without `WILL NAWS`, rejected
   lengths, a short payload, and a NAWS split across chunks.
+- Add characterization tests of what `TelnetSocket` emits and writes:
+  every command, TTYPE, NEW-ENVIRON, unknown SBs, IAC escaping both ways,
+  commands split byte by byte, and the 64 KB overflow. Add unit tests for
+  the byte queue and the TTYPE and NEW-ENVIRON parsers.
 
 ## [0.2.6] - 2026-05-08
 

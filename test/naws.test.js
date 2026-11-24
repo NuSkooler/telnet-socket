@@ -124,3 +124,50 @@ test('NAWS: split across chunks', () => {
     bytes.forEach(b => socket.emit('data', Buffer.from([b])));
     assert.deepEqual(got, [{ width: 80, height: 25 }]);
 });
+
+test('NAWS: a long malformed payload is a command error, and the data after it is intact', async () => {
+    const payload = Array.from({ length: 20 }, (_, i) => i + 1);
+    const { events, text } = feed([...naws(payload), 0x41]);
+    assert.deepEqual(
+        events.map(e => e.name),
+        ['command error']
+    );
+    assert.equal(await text(), 'A');
+});
+
+test('NAWS: the longest real payload, padded with all 4 size bytes escaped', () => {
+    const { events } = feed(naws([0x00, IAC, IAC, IAC, IAC, IAC, IAC, IAC, IAC, 0x00]));
+    assert.equal(events[0].name, 'SB');
+    assert.deepEqual(events[0].command.optionData, { width: 0xffff, height: 0xffff });
+});
+
+test('NAWS: an unterminated payload sent a byte at a time is cheap until the overflow reset', () => {
+    const socket = new EventEmitter();
+    socket.write = () => true;
+    const telnet = new TelnetSocket(socket);
+    const errors = [];
+    telnet.on('error', err => errors.push(err));
+    telnet.on('data', () => {});
+    const started = Date.now();
+    socket.emit('data', Buffer.from([IAC, SB, NAWS]));
+    const one = Buffer.from([0x41]);
+    for (let i = 0; i < 66000 && 0 === errors.length; i++) {
+        socket.emit('data', one);
+    }
+    const elapsed = Date.now() - started;
+    assert.equal(errors.length, 1);
+    assert.match(errors[0].message, /overflow/);
+    //  it was about 2.6s with a JavaScript scan from the start on every byte
+    assert(elapsed < 1500, `took ${elapsed}ms`);
+});
+
+test('NAWS: a long malformed payload with an escaped 255 before 240 is consumed whole', async () => {
+    //  FF FF F0 inside it is an escaped 0xFF and a 0xF0, not its end
+    const payload = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, IAC, IAC, SE, 0x61, 0x62, 0x63];
+    const { events, text } = feed([...naws(payload), 0x41]);
+    assert.deepEqual(
+        events.map(e => e.name),
+        ['command error']
+    );
+    assert.equal(await text(), 'A');
+});
