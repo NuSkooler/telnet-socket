@@ -674,8 +674,72 @@ describe('sending commands', () => {
         ]);
     });
 
+    test('sb.send.mssp and sb.send.gmcp', () => {
+        const socket = makeSocket();
+        const telnet = new TelnetSocket(socket);
+        telnet.sb.send.mssp({ NAME: 'BBS', PLAYERS: '3' });
+        telnet.sb.send.gmcp('Core.Hello', '{}');
+        telnet.sb.send.gmcp('Core.Ping');
+        telnet.dont.naws();
+        telnet.wont.ttype();
+        assert.deepEqual(socket.writes.map(b => [...b]), [
+            [IAC, SB, MSSP, 1, ...bytes('NAME'), 2, ...bytes('BBS'), 1, ...bytes('PLAYERS'), 2, ...bytes('3'), IAC, SE],
+            [IAC, SB, 201, ...bytes('Core.Hello {}'), IAC, SE],
+            [IAC, SB, 201, ...bytes('Core.Ping'), IAC, SE],
+            [IAC, DONT, 31],
+            [IAC, WONT, TTYPE],
+        ]);
+    });
+
     test('commandBuffer takes a number or an object with .code', () => {
         assert.deepEqual([...TelnetSocket.commandBuffer(DO, { code: ECHO })], [IAC, DO, ECHO]);
         assert.deepEqual([...TelnetSocket.commandBuffer(SB, TTYPE, [SEND, IAC, SE])], [IAC, SB, TTYPE, SEND, IAC, SE]);
+    });
+});
+
+describe('the wrapped socket', () => {
+    test('rawSocket is the socket', () => {
+        const socket = makeSocket();
+        assert.equal(new TelnetSocket(socket).rawSocket, socket);
+    });
+
+    test('its events are re-emitted', () => {
+        const socket = makeSocket();
+        const telnet = new TelnetSocket(socket);
+        const seen = [];
+        ['close', 'connect', 'drain', 'end', 'error', 'lookup', 'ready', 'timeout'].forEach(name =>
+            telnet.on(name, (...args) => seen.push([name, ...args]))
+        );
+        const err = new Error('boom');
+        socket.emit('close', false);
+        socket.emit('connect');
+        socket.emit('drain');
+        socket.emit('end');
+        socket.emit('error', err);
+        socket.emit('lookup', null, '127.0.0.1', 4, 'localhost');
+        socket.emit('ready');
+        socket.emit('timeout');
+        assert.deepEqual(seen, [
+            ['close', false],
+            ['connect'],
+            ['drain'],
+            ['end'],
+            ['error', err],
+            ['lookup', null, '127.0.0.1', 4, 'localhost'],
+            ['ready'],
+            ['timeout'],
+        ]);
+    });
+
+    test('ending the TelnetSocket ends the socket', async () => {
+        const socket = makeSocket();
+        let ended = false;
+        socket.end = cb => {
+            ended = true;
+            cb();
+        };
+        const telnet = new TelnetSocket(socket);
+        await new Promise(resolve => telnet.end(resolve));
+        assert(ended);
     });
 });
