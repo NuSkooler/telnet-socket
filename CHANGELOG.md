@@ -20,10 +20,24 @@
 - A consumer listening only to `'SB'` no longer sees malformed
   subnegotiations at all; listen to `'command error'` for them.
 
+### Dependencies
+- No runtime dependencies. `binary-parser` (whose 3.x is ESM-only) and
+  the git dependency `buffers` (`github:NuSkooler/node-buffers`) are
+  removed, so installing no longer needs git. TTYPE IS and NEW-ENVIRON are
+  parsed by hand and the stream is buffered by an internal byte queue,
+  with no behaviour change: the same events, objects and errors for the
+  same input. `optionData.raw` on an SB for an option without a parser
+  keeps its shape: `length`, `get(i)`, `toBuffer()`, `slice()` and
+  `toString()`.
+
 ### Tests
 - Add `npm test` (`node --test`) with NAWS tests: the 4-byte and padded
   payloads, an escaped 255, a NAWS sent without `WILL NAWS`, rejected
   lengths, a short payload, and a NAWS split across chunks.
+- Add characterization tests of what `TelnetSocket` emits and writes:
+  every command, TTYPE, NEW-ENVIRON, unknown SBs, IAC escaping both ways,
+  commands split byte by byte, and the 64 KB overflow. Add unit tests for
+  the byte queue and the TTYPE and NEW-ENVIRON parsers.
 
 ## [0.2.6] - 2026-05-08
 
