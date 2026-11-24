@@ -15,6 +15,16 @@
   as soon as its `IAC SE` arrives.
 - **RFC 1073:** The end of a NAWS is found past escaped 0xFF bytes, so a
   dimension with a 0xFF byte followed by 0xF0 is no longer cut short.
+- An unknown option's subnegotiation (one with no parser, e.g. MSSP or
+  LINEMODE) now waits for its `IAC SE`, as the others do. It used to throw
+  an `oob` error out of the socket's `'data'` event when `IAC SB OPTION`
+  were the last 3 bytes buffered (any client could do this, e.g. by sending
+  it a byte at a time). And when `IAC SE` had not arrived yet, only
+  `IAC SB OPTION` was taken: the rest of the payload was passed on as data
+  and its `IAC SE` emitted as an `'SE'` command.
+- **RFC 1073:** The NAWS end search is bounded to where a NAWS can end. An
+  unterminated NAWS sent a byte at a time used to cost a scan from its
+  start on every byte (about 2.6 s of CPU for 64 KB).
 
 ### Changed
 - A consumer listening only to `'SB'` no longer sees malformed

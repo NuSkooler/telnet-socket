@@ -526,26 +526,36 @@ describe('an SB for an option without a parser', () => {
         assert.equal(raw.toString('latin1'), Buffer.from([IAC, SB, 200, 0x41, 0x42, IAC, SE]).toString('latin1'));
     });
 
-    test('quirk: with no IAC SE yet, only IAC SB OPTION is taken and the rest is data', async () => {
+    test('with no IAC SE yet, it waits: the payload is not passed on as data', async () => {
         const run = feedChunks([[IAC, SB, MSSP, 0x41, 0x42], [IAC, SE, 0x43]]);
-        assert.deepEqual(run.events, [
-            sb(MSSP, 'MSSP', { raw: [IAC, SB, MSSP] }),
-            { name: 'SE', command: { code: SE, option: undefined, name: 'SE', optionName: 'unknown option' } },
-        ]);
-        assert.deepEqual(await run.output(), [0x41, 0x42, 0x43]);
+        assert.deepEqual(run.events, [sb(MSSP, 'MSSP', { raw: [IAC, SB, MSSP, 0x41, 0x42, IAC, SE] })]);
+        assert.deepEqual(await run.output(), [0x43]);
     });
 
-    test('quirk: IAC SB OPTION as the last 3 buffered bytes throws out of the data event', () => {
-        //  the byte queue's indexOf() throws for an offset equal to its
-        //  length; the bytes are kept, so the next chunk completes the
-        //  command (a consumer with an uncaughtException handler carries on)
+    test('IAC SB OPTION as the last 3 buffered bytes waits (it used to throw)', async () => {
+        const socket = makeSocket();
+        const telnet = new TelnetSocket(socket);
+        const got = [];
+        const data = [];
+        telnet.on('SB', command => got.push([...command.optionData.raw.toBuffer()]));
+        telnet.on('data', chunk => data.push(...chunk));
+        assert.doesNotThrow(() => socket.emit('data', Buffer.from([0x41, IAC, SB, MSSP])));
+        assert.doesNotThrow(() => socket.emit('data', Buffer.from([IAC])));
+        assert.deepEqual(got, []);
+        socket.emit('data', Buffer.from([0x42, IAC, SE, 0x43]));
+        assert.deepEqual(got, [[IAC, SB, MSSP, IAC, 0x42, IAC, SE]]);
+        await new Promise(resolve => setImmediate(resolve));
+        assert.deepEqual(data, [0x41, 0x43]);
+    });
+
+    test('an unknown SB sent a byte at a time never throws', () => {
         const socket = makeSocket();
         const telnet = new TelnetSocket(socket);
         const got = [];
         telnet.on('SB', command => got.push([...command.optionData.raw.toBuffer()]));
-        assert.throws(() => socket.emit('data', Buffer.from([0x41, IAC, SB, MSSP])), /oob/);
-        socket.emit('data', Buffer.from([0x42, IAC, SE]));
-        assert.deepEqual(got, [[IAC, SB, MSSP, 0x42, IAC, SE]]);
+        const sub = [IAC, SB, MSSP, 1, 0x41, 2, 0x42, IAC, SE];
+        sub.forEach(b => assert.doesNotThrow(() => socket.emit('data', Buffer.from([b]))));
+        assert.deepEqual(got, [sub]);
     });
 });
 
